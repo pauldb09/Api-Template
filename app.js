@@ -6,7 +6,6 @@ const serv = new Server({
     rateLimiteTimeout: 1000,
     maxRequestsPerSecond: 10,
     acceptMultipleIps: false,
-
 })
 
 await serv.loadRoutes(routes, {

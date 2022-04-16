@@ -5,3 +5,4 @@ class ServerError extends Error {
         throw new Error(message);
     }
 }
+module.exports = ServerError;

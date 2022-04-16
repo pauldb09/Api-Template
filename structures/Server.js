@@ -1,4 +1,5 @@
-const ServerOptions = require("./ServerOptions");
+const ServerOptions = require("./options/ServerOptions");
+const RouteOptions = require("./options/RouteOptions");
 const ServerState = require("./ServerState");
 const ServerError = require("./ServerError");
 const express = require("express");
@@ -13,6 +14,8 @@ class Server extends EventEmitter {
         if (!this.options.validated) return process.exit(1)
     }
     async loadRoutes(options = {}) {
+        options = new RouteOptions(options);
+        if (!options.validated) return;
 
     }
     async handleRateLimite(req, res, next) {
@@ -44,7 +47,11 @@ class Server extends EventEmitter {
                 this.state = ServerState.CONNECTED;
                 this.emit("ready", true)
                 this.emit("debug", `[Server] Server started on port ${this.options.port}`);
-            });
+            }).catch((err) => {
+                this.emit("error", `${err}`);
+                this.state = ServerState.ERRORED;
+                return new ServerError(`[Server Start] Could not start the server.\n ${err}`);
+            })
     }
 }
 module.exports = Server;
