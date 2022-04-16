@@ -2,9 +2,9 @@ const ServerError = require("../ServerError");
 
 class ServerOptions {
     constructor(options) {
-        this._options = options;
         this.options = options;
         this.validated = this._validate();
+        return { options, validated: this.validated };
     }
 
     _validate() {

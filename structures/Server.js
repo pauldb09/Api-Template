@@ -12,9 +12,11 @@ class Server extends EventEmitter {
         super();
         this.app = express();
         this.routes = [];
+        this.cooldowns = [];
         this.state = ServerState.CONNECTING;
         this.options = new ServerOptions(options);
         if (!this.options.validated) return process.exit(1)
+        this.options = this.options.options;
     }
     async loadRoutes(file, options) {
         options = new RouteOptions(options, file);
@@ -34,7 +36,7 @@ class Server extends EventEmitter {
         this.start()
     }
     async handleRateLimite(req, res, next) {
-
+        const ip = req.ip;
     }
     async start() {
         if (this.state !== ServerState.CONNECTING) {
@@ -61,11 +63,21 @@ class Server extends EventEmitter {
         this.routes.filter(r => r.name).forEach(route => {
             this.app.use(route.name, route.router);
         });
+        this.app
+            .get("*", (req, res) => {
+                res.status(404).json({ code: 404, error: true, message: "The route you requested does not exist." });
+            })
+            .use(function(err, req, res, next) {
+                this.emit("error", err);
+                res.status(500).json({ code: 500, error: true, message: "Internal Server Error." });
+            });
+        console.log(this.options)
+        const port = this.options.port
         try {
-            this.app.listen(this.options.port, () => {
+            this.app.listen(port, () => {
                 this.state = ServerState.CONNECTED;
                 this.emit("ready", true)
-                this.emit("debug", `[Server] Server started on port ${this.options.port}`);
+                this.emit("debug", `[Server] Server started on port ${port}`);
             })
         } catch (error) {
             this.emit("error", `${err}`);
