@@ -37,6 +37,28 @@ class Server extends EventEmitter {
     }
     async handleRateLimite(req, res, next) {
         const ip = req.ip;
+        if (!this.options.allowedIps.length) return next();
+        const data = this.cooldowns[ip];
+        if (data) {
+            data.lastRequest = Date.now();
+            data.count++;
+            setTimeout(() => {
+                data.count--;
+            }, this.options.rateLimiteTimeout);
+            if (data.lastRequest > Date.now() + 1000 && data.count >= this.options.maxRequestsPerSecond) {
+                res.status(429).json({ code: 429, timeout: this.options.rateLimiteTimeout, error: true, message: "Too many requests." });
+                setTimeout(() => {
+                    data.count = 0
+                }, this.options.rateLimiteTimeout);
+                return;
+            }
+        } else {
+            this.cooldowns[ip] = {
+                lastRequest: Date.now(),
+                count: 1
+            }
+        }
+
     }
     async start() {
         if (this.state !== ServerState.CONNECTING) {
