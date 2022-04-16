@@ -3,13 +3,14 @@ const ServerState = require("./ServerState");
 const ServerError = require("./ServerError");
 const express = require("express");
 
-class Server {
+class Server extends EventEmitter {
     constructor(options) {
         super();
         this.app = express();
         this.routes = [];
         this.state = ServerState.CONNECTING;
         this.options = new ServerOptions(options);
+        if (!this.options.validated) return process.exit(1)
     }
     async loadRoutes(options = {}) {
 
@@ -38,6 +39,12 @@ class Server {
                 req.server = this;
                 next();
             })
+            .use(this.routes)
+            .listen(this.options.port, () => {
+                this.state = ServerState.CONNECTED;
+                this.emit("ready", true)
+                this.emit("debug", `[Server] Server started on port ${this.options.port}`);
+            });
     }
 }
 module.exports = Server;

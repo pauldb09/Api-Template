@@ -12,3 +12,10 @@ const serv = new Server({
 await serv.loadRoutes(routes, {
     ignoreError: true,
 })
+
+serv.on("debug", (msg) => {
+    console.log(msg);
+})
+serv.on("ready", () => {
+    console.log("Server is ready");
+})
