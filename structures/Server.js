@@ -3,6 +3,9 @@ const RouteOptions = require("./options/RouteOptions");
 const ServerState = require("./ServerState");
 const ServerError = require("./ServerError");
 const express = require("express");
+const fs = require("fs")
+const path = require("path")
+const EventEmitter = require("events");
 
 class Server extends EventEmitter {
     constructor(options) {
@@ -13,10 +16,22 @@ class Server extends EventEmitter {
         this.options = new ServerOptions(options);
         if (!this.options.validated) return process.exit(1)
     }
-    async loadRoutes(options = {}) {
-        options = new RouteOptions(options);
+    async loadRoutes(file, options) {
+        options = new RouteOptions(options, file);
         if (!options.validated) return;
-
+        const files = fs.readdirSync(file).filter(e => e.endsWith(".js"));
+        files.forEach(route => {
+            let route_file;
+            try {
+                route_file = require(path.join(`${file}/${route}`));
+            } catch (error) {
+                this.debug(`[Server] Could not load the route ${route}`);
+            }
+            if (!route_file || !route_file.Router) return;
+            this.routes.push({ name: route_file.name, router: new route_file.Router() });
+        })
+        this.routes.loaded = true;
+        this.start()
     }
     async handleRateLimite(req, res, next) {
 
@@ -41,17 +56,23 @@ class Server extends EventEmitter {
                 res.setHeader('Access-Control-Allow-Credentials', true);
                 req.server = this;
                 next();
-            })
-            .use(this.routes)
-            .listen(this.options.port, () => {
+            });
+
+        this.routes.filter(r => r.name).forEach(route => {
+            this.app.use(route.name, route.router);
+        });
+        try {
+            this.app.listen(this.options.port, () => {
                 this.state = ServerState.CONNECTED;
                 this.emit("ready", true)
                 this.emit("debug", `[Server] Server started on port ${this.options.port}`);
-            }).catch((err) => {
-                this.emit("error", `${err}`);
-                this.state = ServerState.ERRORED;
-                return new ServerError(`[Server Start] Could not start the server.\n ${err}`);
             })
+        } catch (error) {
+            this.emit("error", `${err}`);
+            this.state = ServerState.ERRORED;
+            return new ServerError(`[Server Start] Could not start the server.\n ${err}`);
+        }
     }
 }
+
 module.exports = Server;

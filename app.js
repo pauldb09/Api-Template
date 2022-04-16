@@ -1,15 +1,17 @@
-const { Server } = require("./structures/Server");
-const routes = require('./routes');
+const Server = require("./structures/Server");
+const path = require("path")
+
 const serv = new Server({
     port: 3000,
-    allowedIps: -1, // -1 for all
+    allowedIps: [""], // [] for all
     rateLimiteTimeout: 1000,
     maxRequestsPerSecond: 10,
     acceptMultipleIps: false,
 })
 
-await serv.loadRoutes(routes, {
+serv.loadRoutes(path.join(__dirname, "routes"), {
     ignoreError: true,
+    startOnLoaded: true,
 })
 
 serv.on("debug", (msg) => {
