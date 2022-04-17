@@ -49,7 +49,6 @@ class Server extends EventEmitter {
                 res.status(429).json({ code: 429, timeout: this.options.rateLimiteTimeout, error: true, message: "Too many requests." });
                 setTimeout(() => {
                     data.count = 0
-                    console.log(data)
                 }, this.options.rateLimiteTimeout);
                 return;
             }
@@ -60,6 +59,12 @@ class Server extends EventEmitter {
             }
         }
 
+    }
+    apiError(req, message) {
+        return req.json({ error: true, message: message })
+    }
+    apiRes(req, data) {
+        return req.json({ error: false, data: data })
     }
     async start() {
         if (this.state !== ServerState.CONNECTING) {
