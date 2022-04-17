@@ -37,18 +37,19 @@ class Server extends EventEmitter {
     }
     async handleRateLimite(req, res, next) {
         const ip = req.ip;
-        if (!this.options.allowedIps.length) return next();
         const data = this.cooldowns[ip];
+        console.log(this.cooldowns)
         if (data) {
             data.lastRequest = Date.now();
             data.count++;
             setTimeout(() => {
-                data.count--;
+                data > 0 ? data.count-- : null;
             }, this.options.rateLimiteTimeout);
-            if (data.lastRequest > Date.now() + 1000 && data.count >= this.options.maxRequestsPerSecond) {
+            if (data.lastRequest > Date.now() - 1000 && data.count >= this.options.maxRequestsPerSecond) {
                 res.status(429).json({ code: 429, timeout: this.options.rateLimiteTimeout, error: true, message: "Too many requests." });
                 setTimeout(() => {
                     data.count = 0
+                    console.log(data)
                 }, this.options.rateLimiteTimeout);
                 return;
             }
@@ -90,7 +91,6 @@ class Server extends EventEmitter {
                 res.status(404).json({ code: 404, error: true, message: "The route you requested does not exist." });
             })
             .use(function(err, req, res, next) {
-                this.emit("error", err);
                 res.status(500).json({ code: 500, error: true, message: "Internal Server Error." });
             });
         console.log(this.options)

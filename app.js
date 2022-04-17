@@ -5,7 +5,7 @@ const serv = new Server({
     port: 3000,
     allowedIps: [""], // [] for all
     rateLimiteTimeout: 1000,
-    maxRequestsPerSecond: 10,
+    maxRequestsPerSecond: 3,
     acceptMultipleIps: false,
 })
 

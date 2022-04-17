@@ -4,6 +4,7 @@ module.exports.Router = class Home extends Router {
         super();
         this.get('/', async function(req, res) {
             console.log("Got a request");
+            res.send("Hello World!");
         });
     }
 };
