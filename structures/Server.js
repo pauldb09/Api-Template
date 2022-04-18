@@ -37,6 +37,9 @@ class Server extends EventEmitter {
     }
     async handleRateLimite(req, res, next) {
         const ip = req.ip;
+        if (this.options.allowedIps.includes(ip)) return next();
+        else if (this.options.allowedIps.length) res.status(401).json({ code: 401, timeout: 0, error: true, message: "You are not allowed to access this endpoint" });
+        if (!this.options.acceptMultipleIps && req.ips.length > 1) return res.status(401).json({ code: 401, timeout: 0, error: true, message: "You are not allowed to use multiple ips" });
         const data = this.cooldowns[ip];
         console.log(this.cooldowns)
         if (data) {

@@ -3,7 +3,7 @@ const path = require("path")
 
 const serv = new Server({
     port: 3000,
-    allowedIps: [""], // [] for all
+    allowedIps: [], // [] for all
     rateLimiteTimeout: 1000,
     maxRequestsPerSecond: 3,
     acceptMultipleIps: false,
