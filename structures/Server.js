@@ -4,6 +4,7 @@ const ServerState = require("./ServerState");
 const ServerError = require("./ServerError");
 const express = require("express");
 const fs = require("fs")
+const ServerStats = require("./ServerStats")
 const path = require("path")
 const EventEmitter = require("events");
 
@@ -13,6 +14,7 @@ class Server extends EventEmitter {
         this.app = express();
         this.routes = [];
         this.cooldowns = [];
+        this.stats = new ServerStats({ server: this });
         this.state = ServerState.CONNECTING;
         this.options = new ServerOptions(options);
         if (!this.options.validated) return process.exit(1)
@@ -35,9 +37,9 @@ class Server extends EventEmitter {
         this.routes.loaded = true;
         this.start()
     }
-    async handleRateLimite(req, res, next) {
+    async handleRateLimite(req, res) {
         const ip = req.ip;
-        if (this.options.allowedIps.includes(ip)) return next();
+        if (this.options.allowedIps.includes(ip)) return true;
         else if (this.options.allowedIps.length) res.status(401).json({ code: 401, timeout: 0, error: true, message: "You are not allowed to access this endpoint" });
         if (!this.options.acceptMultipleIps && req.ips.length > 1) return res.status(401).json({ code: 401, timeout: 0, error: true, message: "You are not allowed to use multiple ips" });
         const data = this.cooldowns[ip];
@@ -61,13 +63,14 @@ class Server extends EventEmitter {
                 count: 1
             }
         }
+        return true
 
     }
-    apiError(req, message) {
-        return req.json({ error: true, message: message })
+    apiError(res, message) {
+        return res.status(500).json({ error: true, message: message })
     }
-    apiRes(req, data) {
-        return req.json({ error: false, data: data })
+    apiRes(res, data) {
+        return res.status(200).json({ error: false, data: data })
     }
     async start() {
         if (this.state !== ServerState.CONNECTING) {
@@ -82,11 +85,9 @@ class Server extends EventEmitter {
             .set('trust proxy', true)
             .set("port", this.options.port)
             .use((req, res, next) => {
-                this.handleRateLimite(req, res, next);
+                this.handleRateLimite(req, res);
                 res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-                res.setHeader('Access-Control-Allow-Origin', '*');
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-                res.setHeader('Access-Control-Allow-Credentials', true);
                 req.server = this;
                 next();
             });
@@ -99,6 +100,7 @@ class Server extends EventEmitter {
                 res.status(404).json({ code: 404, error: true, message: "The route you requested does not exist." });
             })
             .use(function(err, req, res, next) {
+                console.error(err)
                 res.status(500).json({ code: 500, error: true, message: "Internal Server Error." });
             });
         console.log(this.options)
@@ -110,7 +112,6 @@ class Server extends EventEmitter {
                 this.emit("debug", `[Server] Server started on port ${port}`);
             })
         } catch (error) {
-            this.emit("error", `${err}`);
             this.state = ServerState.ERRORED;
             return new ServerError(`[Server Start] Could not start the server.\n ${err}`);
         }
